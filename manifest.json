@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "IBA CMS Attendance Pro",
+  "version": "2.0",
+  "description": "Floating attendance metrics with custom absence tracking.",
+  "permissions": [
+    "scripting"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://sibagrades.iba-suk.edu.pk/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
