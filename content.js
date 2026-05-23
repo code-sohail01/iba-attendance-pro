@@ -1,193 +1,272 @@
-// --- 1. UI INJECTION (MODERN + RESIZABLE) ---
-const widget = document.createElement('div');
-widget.id = 'iba-attendance-widget';
-widget.innerHTML = `
-  <div class="iba-header" title="Drag to move">
-    <div id="iba-student-name">Loading...</div>
-    <div id="iba-subject-name">Awaiting Search...</div>
-  </div>
-  <div class="iba-body">
-    <div class="iba-stat-title">Absences Used</div>
-    <div class="iba-main-number"><span id="iba-absences-count">0</span><span class="iba-limit"> / 12</span></div>
-    <div class="iba-progress-bg">
-      <div id="iba-progress-fill"></div>
+// --- 1. THE TOGGLE LISTENER & STATE SYNC ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  const widget = document.getElementById('iba-attendance-widget');
+  if (!widget) return;
+
+  // Report the current state back to the popup toggles
+  if (request.action === "getState") {
+    sendResponse({
+      isVisible: widget.style.display !== 'none',
+      isLight: widget.classList.contains('light')
+    });
+    return true; 
+  }
+
+  // Handle the toggle commands
+  if (request.action === "toggleVisibility") {
+    widget.style.display = (widget.style.display === 'none' ? 'flex' : 'none');
+  } else if (request.action === "toggleTheme") {
+    widget.classList.toggle('light');
+  }
+});
+
+// --- 2. UI INJECTION FUNCTION ---
+function injectUI() {
+  if (document.getElementById('iba-attendance-widget')) return; 
+
+  const widget = document.createElement('div');
+  widget.id = 'iba-attendance-widget';
+  widget.innerHTML = `
+    <div class="iba-header" title="Drag to move" style="position: relative;">
+      
+      <a href="YOUR_LINK_HERE" target="_blank" style="position: absolute; top: 15px; right: 15px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 5px 12px; border-radius: 12px; font-size: 10px; font-weight: 700; text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s; cursor: pointer; z-index: 10;" onmouseover="this.style.background='rgba(16, 185, 129, 0.3)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.15)'">Share ↗</a>
+
+      <div style="display: flex; gap: 10px; align-items: center; width: 75%;">
+        <span id="iba-student-name">Loading...</span>
+      </div>
+      
+      <div id="iba-subject-name" style="margin-top: 8px;">Syncing All Subjects...</div>
     </div>
-    <div id="iba-status-message">Safe Zone</div>
-  </div>
-`;
+    
+    <div class="iba-body">
+      <div id="iba-loading-bar-container">
+        <div id="iba-loading-bar"></div>
+      </div>
+      <div id="iba-subject-list"></div>
+    </div>
 
-const style = document.createElement('style');
-style.textContent = `
-  #iba-attendance-widget {
-    position: fixed; bottom: 40px; right: 40px; width: 320px;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    color: #f8fafc; border-radius: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    z-index: 999999; border: 1px solid rgba(255,255,255,0.08);
-    transition: background 0.2s ease;
-    resize: both; overflow: hidden; min-width: 260px; min-height: 220px; max-width: 500px;
-  }
-  .iba-header { 
-    background: rgba(255, 255, 255, 0.03); padding: 22px 24px; 
-    border-bottom: 1px solid rgba(255,255,255,0.05); cursor: grab; user-select: none;
-  }
-  .iba-header:active { cursor: grabbing; }
-  #iba-student-name { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 6px; pointer-events: none; }
-  #iba-subject-name { font-size: 17px; font-weight: 700; color: #f1f5f9; pointer-events: none; line-height: 1.3; letter-spacing: -0.3px; }
-  .iba-body { padding: 28px 24px; text-align: center; display: flex; flex-direction: column; justify-content: center; height: calc(100% - 85px); box-sizing: border-box; }
-  .iba-stat-title { font-size: 13px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-  .iba-main-number { font-size: 48px; font-weight: 800; margin: 12px 0 20px 0; color: #ffffff; text-shadow: 0 4px 12px rgba(0,0,0,0.3); letter-spacing: -1px; }
-  .iba-limit { font-size: 24px; color: #475569; font-weight: 600; letter-spacing: 0; }
-  .iba-progress-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 12px; margin-bottom: 20px; overflow: hidden; flex-shrink: 0;}
-  #iba-progress-fill { height: 100%; width: 0%; border-radius: 12px; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.4s ease; }
-  #iba-status-message { font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 20px; display: inline-block; background: rgba(255,255,255,0.05); letter-spacing: 0.3px; align-self: center;}
-`;
-document.head.appendChild(style);
-document.body.appendChild(widget);
+    <div style="text-align: center; padding: 12px 15px; font-size: 10px; color: #64748b; font-weight: 500; letter-spacing: 0.5px; border-top: 1px dashed rgba(255,255,255,0.05); background: rgba(0,0,0,0.1); flex-shrink: 0;">
+      Created by Sohail for SIBAU Students
+    </div>
+  `;
 
-// --- 2. DRAGGABLE LOGIC ---
-let isDragging = false;
-const header = widget.querySelector('.iba-header');
-
-header.addEventListener('mousedown', (e) => {
-  if (e.target !== header) return; 
-  isDragging = true;
-  const rect = widget.getBoundingClientRect();
-  widget.style.bottom = 'auto';
-  widget.style.right = 'auto';
-  widget.style.left = rect.left + 'px';
-  widget.style.top = rect.top + 'px';
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (!isDragging) return;
-  const rect = widget.getBoundingClientRect();
-  widget.style.left = (rect.left + e.movementX) + 'px';
-  widget.style.top = (rect.top + e.movementY) + 'px';
-});
-
-document.addEventListener('mouseup', () => { isDragging = false; });
-
-// --- 3. STATE MEMORY & SCRAPING LOGIC ---
-let lastTableDataSnapshot = null; // Memory lock to prevent premature updates
-
-function getDropdownSubject() {
-  const exactDropdown = document.querySelector('select[id*="Dpcmscourses"], select[name*="Dpcmscourses"]');
-  if (exactDropdown) {
-    const checkedOption = exactDropdown.querySelector('option:checked');
-    if (checkedOption && !checkedOption.text.includes('Select')) return checkedOption.text.trim();
-  }
-  const allSelected = document.querySelectorAll('option[selected="selected"], option:checked');
-  for (let opt of allSelected) {
-    const val = opt.innerText.trim();
-    if (val.length > 7 && !val.includes('Spring') && !val.includes('Fall') && !val.toLowerCase().includes('select')) {
-      return val;
+  const style = document.createElement('style');
+  style.textContent = `
+    /* Added a universal reset for our widget to block portal fonts */
+    #iba-attendance-widget * { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
     }
+    
+    #iba-attendance-widget {
+      position: fixed; bottom: 40px; right: 40px; width: 380px;
+      background: var(--bg, rgba(15, 23, 42, 0.95));
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      color: var(--text, #f8fafc); border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+      z-index: 999999; border: 1px solid var(--border, rgba(255,255,255,0.08));
+      transition: background 0.2s ease, color 0.2s ease;
+      resize: both; overflow: hidden; min-width: 320px; min-height: 200px; max-height: 80vh; display: flex; flex-direction: column;
+    }
+    
+    #iba-attendance-widget.light { 
+      --bg: #ffffff; 
+      --text: #1e293b; 
+      --border: #e2e8f0; 
+    }
+    
+    .iba-header { 
+      background: rgba(128, 128, 128, 0.1); padding: 20px; 
+      border-bottom: 1px solid var(--border, rgba(255,255,255,0.05)); cursor: grab; user-select: none; flex-shrink: 0;
+    }
+    .iba-header:active { cursor: grabbing; }
+    #iba-student-name { font-size: 11px; color: #94a3b8 !important; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 4px; }
+    
+    /* THE FIX: Explicitly set the text variable and block portal CSS */
+    #iba-subject-name { font-size: 16px; font-weight: 700; color: var(--text, #f8fafc) !important; line-height: 1.3; }
+    
+    .iba-body { padding: 0; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; }
+    
+    #iba-loading-bar-container { width: 100%; height: 4px; background: rgba(128,128,128,0.1); }
+    #iba-loading-bar { height: 100%; width: 0%; background: #10b981; transition: width 0.3s ease; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+    
+    #iba-subject-list { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+    .iba-subject-card { 
+      background: rgba(128, 128, 128, 0.05); border: 1px solid var(--border, rgba(255,255,255,0.05)); 
+      border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .iba-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    
+    /* THE FIX: Explicitly set the text variable and block portal CSS here too */
+    .iba-card-title { font-size: 13px; font-weight: 600; color: var(--text, #f8fafc) !important; line-height: 1.4; flex-grow: 1; }
+    .iba-card-absences { font-size: 18px; font-weight: 800; }
+    
+    .iba-card-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 500; }
+    .iba-bunk-calc { background: rgba(128, 128, 128, 0.1); padding: 4px 10px; border-radius: 20px; }
+    
+    .iba-body::-webkit-scrollbar { width: 6px; }
+    .iba-body::-webkit-scrollbar-track { background: transparent; }
+    .iba-body::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 10px; }
+  `;
+  
+  document.head.appendChild(style);
+  document.body.appendChild(widget);
+
+  // BULLETPROOF DRAGGING LOGIC
+  const header = widget.querySelector('.iba-header');
+  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+  header.onmousedown = dragMouseDown;
+
+  function dragMouseDown(e) {
+    e.preventDefault();
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    
+    const rect = widget.getBoundingClientRect();
+    widget.style.left = rect.left + 'px';
+    widget.style.top = rect.top + 'px';
+    widget.style.bottom = 'auto';
+    widget.style.right = 'auto';
+
+    document.onmouseup = closeDragElement;
+    document.onmousemove = elementDrag;
   }
-  return "Subject Not Found";
+
+  function elementDrag(e) {
+    e.preventDefault();
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    
+    widget.style.top = (widget.offsetTop - pos2) + "px";
+    widget.style.left = (widget.offsetLeft - pos1) + "px";
+  }
+
+  function closeDragElement() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+  }
 }
 
-function runScanner() {
-  // Extract Student Name safely
+// --- 4. BACKGROUND SCRAPING LOGIC ---
+async function scrapeAllSubjects(select, submitBtn) {
   const nameElement = Array.from(document.querySelectorAll('span, div')).find(el => el.innerText.includes('Logout') && el.innerText.includes(','));
   if (nameElement) {
     document.getElementById('iba-student-name').innerText = nameElement.innerText.split(',')[0].trim();
   }
 
-  // Grab current table rows
-  const rows = document.querySelectorAll('tr.rgRow, tr.rgAltRow');
+  const viewState = document.getElementById('__VIEWSTATE') ? document.getElementById('__VIEWSTATE').value : '';
+  const viewStateGenerator = document.getElementById('__VIEWSTATEGENERATOR') ? document.getElementById('__VIEWSTATEGENERATOR').value : '';
+  const eventValidation = document.getElementById('__EVENTVALIDATION') ? document.getElementById('__EVENTVALIDATION').value : '';
+
+  const options = Array.from(select.options).filter(opt => 
+    !opt.text.includes('Select') && !opt.text.includes('Spring') && !opt.text.includes('Fall') && opt.value
+  );
+
+  const totalSubjects = options.length;
+  const listContainer = document.getElementById('iba-subject-list');
+  const loadingBar = document.getElementById('iba-loading-bar');
   
-  // Create a text snapshot of the current table to compare against our memory
-  const currentTableDataSnapshot = Array.from(rows).map(row => row.innerText).join('');
+  listContainer.innerHTML = ''; 
 
-  // THE FIX: If the table hasn't changed since the last time we checked, DO NOTHING.
-  // This completely blocks the widget from updating just because the dropdown changed.
-  if (currentTableDataSnapshot === lastTableDataSnapshot) {
-    return;
-  }
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i];
+    
+    loadingBar.style.width = `${((i) / totalSubjects) * 100}%`;
+    document.getElementById('iba-subject-name').innerText = `Syncing: ${i+1} of ${totalSubjects}`;
 
-  // If we reach here, the table HAS changed (button was clicked, or first load).
-  // Update our memory lock.
-  lastTableDataSnapshot = currentTableDataSnapshot;
+    try {
+      const formData = new URLSearchParams();
+      formData.append('__VIEWSTATE', viewState);
+      formData.append('__VIEWSTATEGENERATOR', viewStateGenerator);
+      if(eventValidation) formData.append('__EVENTVALIDATION', eventValidation);
+      formData.append(select.name, opt.value); 
+      formData.append(submitBtn.name, submitBtn.value); 
 
-  // SCENARIO 1: First load, no table exists yet
-  if (rows.length === 0) {
-    updateUI("Awaiting Search...", 0, "PENDING");
-    return;
-  }
+      const response = await fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString()
+      });
 
-  // SCENARIO 2: Table exists and just updated! Now it is safe to read the dropdown.
-  const confirmedSubject = getDropdownSubject();
-  
-  // Calculate Absences (50/100 min rules)
-  let totalAbsenceUnits = 0;
-  rows.forEach(row => {
-    const cols = row.querySelectorAll('td');
-    if (cols.length >= 5) {
-      const statusText = cols[3].innerText.trim().toLowerCase();
-      const minutes = parseInt(cols[4].innerText.trim(), 10) || 50; 
-      if (statusText === 'absent') {
-        totalAbsenceUnits += (minutes >= 100 ? 2 : 1);
-      }
+      const htmlText = await response.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, 'text/html');
+      
+      let totalAbsenceUnits = 0;
+      const rows = doc.querySelectorAll('tr.rgRow, tr.rgAltRow');
+      
+      rows.forEach(row => {
+        const cols = row.querySelectorAll('td');
+        if (cols.length >= 5) {
+          const statusText = cols[3].innerText.trim().toLowerCase();
+          const minutes = parseInt(cols[4].innerText.trim(), 10) || 50; 
+          if (statusText === 'absent') {
+            totalAbsenceUnits += (minutes >= 100 ? 2 : 1);
+          }
+        }
+      });
+
+      renderSubjectCard(opt.text.trim(), totalAbsenceUnits, listContainer);
+
+    } catch (err) {
+      console.error("Failed to fetch data for " + opt.text, err);
+      renderSubjectCard(opt.text.trim(), "Error", listContainer);
     }
-  });
-
-  updateUI(confirmedSubject, totalAbsenceUnits, "ACTIVE");
-}
-
-// --- 4. UPDATE VISUALS ---
-function updateUI(subjectName, absences, state) {
-  document.getElementById('iba-subject-name').innerText = subjectName;
-  const countSpan = document.getElementById('iba-absences-count');
-  const fillBar = document.getElementById('iba-progress-fill');
-  const statusMsg = document.getElementById('iba-status-message');
-
-  countSpan.innerText = absences;
-  
-  let percentage = (absences / 12) * 100;
-  if (percentage > 100) percentage = 100;
-  fillBar.style.width = percentage + '%';
-
-  if (state === "PENDING") {
-    fillBar.style.backgroundColor = 'rgba(255,255,255,0.1)';
-    fillBar.style.boxShadow = 'none';
-    statusMsg.innerText = "Select a subject & fetch";
-    statusMsg.style.color = '#94a3b8';
-    return;
   }
 
-  // Premium glowing colors for ACTIVE state
-  if (absences <= 6) {
-    fillBar.style.backgroundColor = '#10b981';
-    fillBar.style.boxShadow = '0 0 12px rgba(16, 185, 129, 0.4)';
-    statusMsg.innerText = "Safe Zone";
-    statusMsg.style.color = '#10b981';
-  } else if (absences <= 9) {
-    fillBar.style.backgroundColor = '#fbbf24'; 
-    fillBar.style.boxShadow = '0 0 12px rgba(251, 191, 36, 0.4)';
-    statusMsg.innerText = "Warning: Approaching Limit";
-    statusMsg.style.color = '#fbbf24';
-  } else if (absences <= 12) {
-    fillBar.style.backgroundColor = '#f97316'; 
-    fillBar.style.boxShadow = '0 0 12px rgba(249, 115, 22, 0.4)';
-    statusMsg.innerText = "Critical Danger";
-    statusMsg.style.color = '#f97316';
-  } else {
-    fillBar.style.backgroundColor = '#ef4444'; 
-    fillBar.style.boxShadow = '0 0 12px rgba(239, 68, 68, 0.4)';
-    statusMsg.innerText = "Limit Exceeded!";
-    statusMsg.style.color = '#ef4444';
-  }
+  loadingBar.style.width = '100%';
+  setTimeout(() => { document.getElementById('iba-loading-bar-container').style.display = 'none'; }, 500);
+  document.getElementById('iba-subject-name').innerText = "Dashboard Synced";
 }
 
-// --- 5. AUTO-UPDATING ---
-let timeout;
-const observer = new MutationObserver(() => {
-  clearTimeout(timeout);
-  timeout = setTimeout(runScanner, 500); 
-});
+// --- 5. RENDER DASHBOARD CARDS ---
+function renderSubjectCard(subjectName, absences, container) {
+  let color = '#94a3b8'; 
+  let safeSkipsText = "Data Error";
+  let textColor = '#e2e8f0';
 
-observer.observe(document.body, { childList: true, subtree: true });
-setTimeout(runScanner, 1000); // Initial run
+  if (typeof absences === 'number') {
+    let safeSkips = 12 - absences;
+    if (safeSkips < 0) safeSkips = 0;
+
+    safeSkipsText = `${safeSkips} safe skips left`;
+
+    if (absences <= 6) { color = '#10b981'; textColor = '#10b981'; } 
+    else if (absences <= 9) { color = '#fbbf24'; textColor = '#fbbf24'; } 
+    else if (absences <= 12) { color = '#f97316'; textColor = '#f97316'; } 
+    else { color = '#ef4444'; textColor = '#ef4444'; safeSkipsText = "Limit Exceeded!"; } 
+  }
+
+  const card = document.createElement('div');
+  card.className = 'iba-subject-card';
+  card.innerHTML = `
+    <div class="iba-card-header">
+      <div class="iba-card-title">${subjectName}</div>
+      <div class="iba-card-absences" style="color: ${color}; text-shadow: 0 0 10px ${color}40;">
+        ${absences}${typeof absences === 'number' ? '<span style="font-size: 12px; color: #64748b; font-weight: 500;">/12</span>' : ''}
+      </div>
+    </div>
+    <div class="iba-card-footer">
+      <div class="iba-bunk-calc" style="color: ${textColor}; border: 1px solid ${color}30;">
+        ${safeSkipsText}
+      </div>
+    </div>
+  `;
+  container.appendChild(card);
+}
+
+// --- 6. THE PATIENT INITIALIZER (INFINITE POLLING) ---
+const initInterval = setInterval(() => {
+  if (!window.location.href.toLowerCase().includes('attendance')) return; 
+
+  const select = document.querySelector('select[id*="Dpcmscourses" i], select[name*="Dpcmscourses" i]');
+  const submitBtn = document.querySelector('input[value*="ATTENDANCE" i], input[id*="Button1" i], input[type="submit"]');
+
+  if (select && submitBtn) {
+    clearInterval(initInterval); 
+    injectUI(); 
+    scrapeAllSubjects(select, submitBtn);
+  }
+}, 1000);

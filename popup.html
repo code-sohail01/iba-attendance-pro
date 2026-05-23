@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+        /* Styling for the LinkedIn Link */
+    .branding-footer a { 
+    color: #10b981; 
+    font-weight: 700; 
+    text-decoration: none; 
+    transition: text-shadow 0.2s ease;
+    }
+    .branding-footer a:hover { 
+    text-shadow: 0 0 8px rgba(16, 185, 129, 0.5); 
+    }
+    /* Base Styles */
+    body { width: 240px; padding: 16px; font-family: -apple-system, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; box-sizing: border-box; }
+    h3 { margin-top: 0; font-size: 13px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
+
+    /* VIEW 1: The Master Controls */
+    #controls-view { display: none; }
+    .control-group { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; }
+    
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .3s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: #10b981; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* VIEW 2: The Redirect Screen */
+    #redirect-view { display: none; text-align: center; }
+    #redirect-view p { font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 15px; }
+    .primary-btn { background: #10b981; color: #0f172a; border: none; padding: 10px 15px; width: 100%; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .primary-btn:hover { background: #059669; }
+
+    /* NEW: Personal Branding Footer */
+    .branding-footer { margin-top: 20px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1); text-align: center; }
+    .branding-footer p { margin: 0; font-size: 10px; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <h3>IBA Attendance Pro</h3>
+
+  <div id="controls-view">
+    <div class="control-group">
+      <span>Widget Visibility</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-visibility" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="control-group">
+      <span>Light Theme</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-theme">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div id="redirect-view">
+    <p>This extension only functions on the official University CMS portal.</p>
+    <button id="btn-go-portal" class="primary-btn">Open Portal</button>
+  </div>
+
+  <div class="branding-footer">
+    <p>Engineered by <a href="https://www.linkedin.com/in/sohail-ahmed-3aab5b377/" target="_blank">Sohail Ahmed</a></p>
+    <p style="margin-top: 4px; font-size: 9px; opacity: 0.7;">Sukkur IBA University</p>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html> 
